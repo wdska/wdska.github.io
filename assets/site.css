@@ -562,8 +562,11 @@ p:last-child{margin-bottom:0}
 @media (prefers-reduced-motion:reduce){.bp-tr{translate:none}}
 @media (max-width:860px){.bp-art{opacity:.4}.bp-tr{opacity:.32}}
 
-/* v3.6 — "through the die": one fixed canvas over the page, drawn only inside the extrusion panel */
-.die-cv{position:fixed;left:0;top:0;width:100vw;height:100vh;height:100lvh;z-index:40;pointer-events:none;visibility:hidden}
+/* v3.7 — "through the die": solid GPU blocks inside the extrusion panel */
+#uslugi > .die2{position:absolute;inset:0;z-index:5;pointer-events:none;visibility:hidden;will-change:opacity}
+.die2 i{position:absolute;left:0;top:0;width:1px;height:1px;background:#1c1e22;transform-origin:0 0;will-change:transform}
+.die2 .die-glow{position:absolute;left:0;top:0;border-radius:50%;background:radial-gradient(closest-side,rgba(255,90,20,0) 50%,rgba(255,90,20,.2) 72%,rgba(255,60,10,0));transform-origin:50% 50%;will-change:transform}
+.die2 .die-art{position:absolute;left:0;top:0;overflow:visible;transform-origin:50% 50%;will-change:transform}
 #uslugi.die-sec{margin-top:clamp(40px,14vh,160px)}
 .hdr{z-index:60}
 /* more room before the extrusion panel, so the die arrives as its own moment */
