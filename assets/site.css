@@ -205,8 +205,8 @@ p:last-child{margin-bottom:0}
 .gal-ctrl svg{width:20px;height:20px}
 .gallery{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding-inline:var(--gut);scroll-padding-inline:var(--gut)}
 .gallery::-webkit-scrollbar{display:none}
-.gallery figure{margin:0;flex:0 0 auto;scroll-snap-align:start;height:clamp(260px,40vw,540px);border-radius:var(--r-md);overflow:hidden}
-.gallery img{height:100%;width:auto;object-fit:cover}
+.gallery figure{margin:0;flex:0 0 auto;scroll-snap-align:start;height:clamp(260px,40vw,540px);border-radius:var(--r-md);overflow:hidden;background:var(--graphite-2)}
+.gallery img{height:100%;width:100%;object-fit:cover}
 @media (min-width:1340px){.gallery{padding-inline:calc((100vw - 2*var(--edge) - var(--wrap))/2 + var(--gut))}}
 @media (max-width:600px){.gal-head{flex-direction:column;align-items:flex-start}}
 
@@ -500,3 +500,14 @@ p:last-child{margin-bottom:0}
 .jit .scr polygon{animation:pscr 1.2s steps(2) infinite}
 @keyframes pscr{50%{fill:#3b3e44}}
 @media (prefers-reduced-motion:reduce){.jit .lane,.jit .saw,.jit .k2,.jit .k3,.jit .k4,.jit .dock polygon,.jit .scr polygon{animation:none}}
+
+/* v3.1 — scroll reveal. Classes are added by site.js only, so the page is fully visible without JS or with reduced motion. */
+.rv{opacity:0;transform:translate3d(0,32px,0);transition:opacity .8s cubic-bezier(.2,.7,.2,1) var(--rv-d,0s),transform 1s cubic-bezier(.2,.7,.2,1) var(--rv-d,0s)}
+.rv.in{opacity:1;transform:none}
+.rv-pic{overflow:hidden}
+.rv-pic img{transform:scale(1.08);transition:transform 1.6s cubic-bezier(.2,.7,.2,1) var(--rv-d,0s)}
+.rv-pic.in img{transform:none}
+.sec.rv-panel{transform:translate3d(0,48px,0) scale(.985);opacity:.001;transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform 1.1s cubic-bezier(.2,.7,.2,1)}
+.sec.rv-panel.in{transform:none;opacity:1}
+.hero .rv{transition-duration:.9s,1.1s}
+@media (prefers-reduced-motion:reduce){.rv,.rv-pic img,.sec.rv-panel{opacity:1!important;transform:none!important;transition:none!important}}

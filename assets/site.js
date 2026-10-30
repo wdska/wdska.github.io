@@ -10,8 +10,19 @@ document.documentElement.classList.add('js');
   // gallery arrows
   document.querySelectorAll('[data-gal]').forEach(function(ctrl){
     var g=document.getElementById(ctrl.dataset.gal);
+    var figs=[].slice.call(g.querySelectorAll('figure'));
+    // load all photos once the gallery gets close, so the first swipe doesn't wait for images
+    var warm=function(){figs.forEach(function(f){var i=f.querySelector('img');if(i)i.loading='eager';});};
+    if('IntersectionObserver' in window){var wo=new IntersectionObserver(function(es){if(es[0].isIntersecting){warm();wo.disconnect();}},{rootMargin:'800px 0px'});wo.observe(g);}else warm();
+    // arrows step exactly one photo, aligned to the snap points
     ctrl.querySelectorAll('button').forEach(function(btn){
-      btn.addEventListener('click',function(){g.scrollBy({left:(btn.dataset.dir==='prev'?-1:1)*g.clientWidth*0.8,behavior:'smooth'});});
+      btn.addEventListener('click',function(){
+        var pad=parseFloat(getComputedStyle(g).scrollPaddingLeft)||0,x=g.scrollLeft,base=figs[0].offsetLeft-pad,cur=0;
+        figs.forEach(function(f,k){if(f.offsetLeft-pad-base<=x+4)cur=k;});
+        var next=Math.max(0,Math.min(figs.length-1,cur+(btn.dataset.dir==='prev'?-1:1)));
+        if(btn.dataset.dir==='prev'&&figs[cur].offsetLeft-pad-base<x-4)next=cur; // partly scrolled: snap back to current first
+        g.scrollTo({left:figs[next].offsetLeft-pad-base,behavior:'smooth'});
+      });
     });
   });
 
@@ -110,3 +121,42 @@ document.documentElement.classList.add('js');
 
 // network diagram: respect reduced motion
 (function(){if(!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches))return;document.querySelectorAll('.net-svg,.jit-svg').forEach(function(s){if(s.pauseAnimations)s.pauseAnimations();});})();
+
+// scroll reveal: panels rise in, then their content follows with a short stagger
+(function(){
+  if(!('IntersectionObserver' in window))return;
+  if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  var groups=[
+    ['.hero h1,.hero .lead,.hero .btns,.hero .hero-facts,.hero .spec',0.12],
+    ['.h-block > *',0.08],
+    ['.mission .statement,.mission .split > *',0.12],
+    ['.svc-list li',0.04],
+    ['.certs > *',0.1],
+    ['.jit-points li',0.07],
+    ['.steps > li',0.08],
+    ['.docs > *',0.12],
+    ['.contact-grid > form,.ask > form',0],
+    ['.gallery figure',0.06],
+    ['.phead h1,.phead .lead',0.1]
+  ];
+  var els=[];
+  groups.forEach(function(gr){
+    var seen=new Map();
+    document.querySelectorAll(gr[0]).forEach(function(el){
+      if(el.classList.contains('rv'))return;
+      var p=el.parentNode,k=seen.get(p)||0;seen.set(p,k+1);
+      el.classList.add('rv');el.style.setProperty('--rv-d',Math.min(k*gr[1],.6)+'s');els.push(el);
+    });
+  });
+  document.querySelectorAll('.proc,.jit,.ceo,.docs .pic,.person img').forEach(function(el){
+    if(el.closest('.rv'))return;el.classList.add('rv');els.push(el);
+  });
+  document.querySelectorAll('.docs .pic').forEach(function(el){el.classList.add('rv-pic');});
+  document.querySelectorAll('main > .sec').forEach(function(el){el.classList.add('rv-panel');els.push(el);});
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});
+  },{rootMargin:'0px 0px -8% 0px',threshold:0});
+  els.forEach(function(el){io.observe(el);});
+  // safety net: anything still hidden after load + 4s (e.g. printed or odd viewport) becomes visible
+  window.addEventListener('load',function(){setTimeout(function(){els.forEach(function(el){var r=el.getBoundingClientRect();if(r.top<innerHeight&&r.bottom>0)el.classList.add('in');});},4000);});
+})();
