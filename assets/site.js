@@ -170,53 +170,79 @@ document.documentElement.classList.add('js');
   addEventListener('resize',upd);upd();
 })();
 
-// "through the die": a steel die plate with a 40x40 profile-shaped opening rises over the extrusion
-// section and the view zooms through the opening into it. Section itself is unchanged underneath.
+// "through the die" (v3, Apple-style pinned scene): a tall scene at the top of the extrusion panel pins a
+// full-screen stage while you scroll; a canvas redraws the die plate every frame (crisp at any zoom, cheap on
+// phones), and behind it waits a blueprint of the 40x40 profile that "came out" of the die.
 (function(){
   var sec=document.getElementById('uslugi');
-  if(!sec||!window.requestAnimationFrame)return;
+  if(!sec||!window.requestAnimationFrame||!document.createElement('canvas').getContext)return;
   if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-  var NS='http://www.w3.org/2000/svg';
-  var P='M0 0 L60 0 L60 10 L44 10 L44 30 L116 30 L116 10 L100 10 L100 0 L160 0 L160 60 L150 60 L150 44 L130 44 L130 116 L150 116 L150 100 L160 100 L160 160 L100 160 L100 150 L116 150 L116 130 L44 130 L44 150 L60 150 L60 160 L0 160 L0 100 L10 100 L10 116 L30 116 L30 44 L10 44 L10 60 L0 60 Z';
+  var T='M0 0 L60 0 L60 10 L44 10 L44 30 L116 30 L116 10 L100 10 L100 0 L160 0 L160 60 L150 60 L150 44 L130 44 L130 116 L150 116 L150 100 L160 100 L160 160 L100 160 L100 150 L116 150 L116 130 L44 130 L44 150 L60 150 L60 160 L0 160 L0 100 L10 100 L10 116 L30 116 L30 44 L10 44 L10 60 L0 60 Z';
+  var pts=T.replace(/[MLZ]/g,' ').trim().split(/\s+/).map(Number);
   var label=(sec.getAttribute('data-die')||'matryca').toUpperCase();
-  var bolts='';for(var k=0;k<6;k++){var a=k*Math.PI/3+Math.PI/6,x=80+168*Math.cos(a),y=80+168*Math.sin(a);bolts+='<circle class="bolt" cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="9" vector-effect="non-scaling-stroke"/><circle class="ring" cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="4" vector-effect="non-scaling-stroke"/>';}
-  var wrap=document.createElement('div');wrap.className='die';wrap.setAttribute('aria-hidden','true');
-  wrap.innerHTML='<svg xmlns="'+NS+'"><defs>'+
-    '<linearGradient id="dieg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a2d32"/><stop offset=".5" stop-color="#1b1d21"/><stop offset="1" stop-color="#131417"/></linearGradient>'+
-    '<mask id="diem" maskUnits="userSpaceOnUse"><rect class="m-bg" fill="#fff"/><g class="zg"><path d="'+P+'" fill="#000"/></g></mask>'+
-    '<clipPath id="diec"><rect class="c-r"/></clipPath></defs>'+
-    '<rect class="plate" fill="url(#dieg)" mask="url(#diem)"/>'+
-    '<g clip-path="url(#diec)"><g class="zg">'+
-      '<circle class="ring" cx="80" cy="80" r="122" vector-effect="non-scaling-stroke"/>'+
-      '<circle class="ring-d" cx="80" cy="80" r="140" vector-effect="non-scaling-stroke"/>'+
-      '<circle class="ring" cx="80" cy="80" r="196" vector-effect="non-scaling-stroke"/>'+bolts+
-      '<path class="edge" d="'+P+'" vector-effect="non-scaling-stroke"/>'+
-      '<path class="dimd" d="M0 -26 H160 M0 -32 V-20 M160 -32 V-20 M-26 0 V160 M-32 0 H-20 M-32 160 H-20" vector-effect="non-scaling-stroke"/>'+
-      '<text class="lbl" x="80" y="-32" text-anchor="middle">40</text>'+
-      '<text class="lbl" x="-34" y="82" text-anchor="middle" transform="rotate(-90 -34 82)">40</text>'+
-      '<text class="lbl" x="80" y="226" text-anchor="middle">'+label.replace(/[<&]/g,'')+' · PH-40×40</text>'+
-    '</g></g></svg>';
-  document.body.appendChild(wrap);
-  sec.classList.add('die-sec');
-  var plate=wrap.querySelector('.plate'),mbg=wrap.querySelector('.m-bg'),clip=wrap.querySelector('.c-r'),gs=wrap.querySelectorAll('.zg'),ticking=false;
+  var scene=document.createElement('div');scene.className='die-scene';scene.setAttribute('aria-hidden','true');
+  scene.innerHTML='<div class="die-stage"><div class="die-under"><svg viewBox="-70 -60 300 300" fill="none">'+
+    '<path d="'+T+'" class="u-ln"/><circle cx="80" cy="80" r="16" class="u-ln"/><circle cx="80" cy="80" r="7" class="u-ln"/>'+
+    '<path d="M80 -20 V180 M-20 80 H180" class="u-cl"/>'+
+    '<path d="M0 -30 H160 M0 -37 V-23 M160 -37 V-23 M-30 0 V160 M-37 0 H-23 M-37 160 H-23" class="u-dim"/>'+
+    '<text x="80" y="-38" text-anchor="middle">40</text><text x="-40" y="84" text-anchor="middle" transform="rotate(-90 -40 84)">40</text>'+
+    '</svg><span class="u-cap">PROFIL · 40 × 40 · 1:1</span></div><canvas class="die-cv"></canvas></div>';
+  sec.insertBefore(scene,sec.firstChild);sec.classList.add('die-sec');
+  var cv=scene.querySelector('.die-cv'),cx=cv.getContext('2d'),stage=scene.querySelector('.die-stage'),under=scene.querySelector('.die-under');
+  var W=0,H=0,DPR=1,ticking=false,lastKey='';
+  function resize(){
+    DPR=Math.min(window.devicePixelRatio||1,2);
+    W=stage.clientWidth;H=stage.clientHeight;
+    cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);cv.style.width=W+'px';cv.style.height=H+'px';lastKey='';
+  }
+  function draw(z,alpha){
+    var c=cx;c.setTransform(DPR,0,0,DPR,0,0);c.clearRect(0,0,W,H);
+    if(alpha<=0.001)return;
+    c.globalAlpha=alpha;
+    var s0=Math.min(W,H)*0.3/160,s=s0*z,ox=W/2-80*s,oy=H/2-80*s;
+    function X(u){return ox+u*s}function Y(u){return oy+u*s}
+    // plate with the profile-shaped opening (even-odd)
+    var g=c.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.hypot(W,H)*0.6);
+    g.addColorStop(0,'#2d3036');g.addColorStop(.5,'#1d1f23');g.addColorStop(1,'#131417');
+    c.beginPath();c.rect(-2,-2,W+4,H+4);
+    c.moveTo(X(pts[0]),Y(pts[1]));for(var i=2;i<pts.length;i+=2)c.lineTo(X(pts[i]),Y(pts[i+1]));c.closePath();
+    c.fillStyle=g;c.fill('evenodd');
+    // hot glow around the opening
+    var gl=c.createRadialGradient(X(80),Y(80),70*s,X(80),Y(80),150*s);
+    gl.addColorStop(0,'rgba(255,90,20,0)');gl.addColorStop(.35,'rgba(255,90,20,.22)');gl.addColorStop(1,'rgba(255,60,10,0)');
+    c.fillStyle=gl;c.beginPath();c.rect(-2,-2,W+4,H+4);c.moveTo(X(pts[0]),Y(pts[1]));for(i=2;i<pts.length;i+=2)c.lineTo(X(pts[i]),Y(pts[i+1]));c.closePath();c.fill('evenodd');
+    // opening edge
+    c.lineWidth=1.4;c.strokeStyle='rgba(255,255,255,.6)';c.beginPath();c.moveTo(X(pts[0]),Y(pts[1]));for(i=2;i<pts.length;i+=2)c.lineTo(X(pts[i]),Y(pts[i+1]));c.closePath();c.stroke();
+    // rings
+    function ring(r,a,dash){c.beginPath();c.setLineDash(dash||[]);c.strokeStyle='rgba(255,255,255,'+a+')';c.lineWidth=1.1;c.arc(X(80),Y(80),r*s,0,7);c.stroke();}
+    ring(122,.16);ring(140,.12,[6,6]);ring(200,.14);ring(330,.08);ring(520,.06,[10,10]);c.setLineDash([]);
+    // bolts
+    for(var k=0;k<6;k++){var a=k*Math.PI/3+Math.PI/6,bx=X(80+168*Math.cos(a)),by=Y(80+168*Math.sin(a));
+      c.beginPath();c.arc(bx,by,10*s,0,7);c.fillStyle='#121316';c.fill();c.strokeStyle='rgba(255,255,255,.24)';c.stroke();
+      c.beginPath();c.arc(bx,by,4*s,0,7);c.strokeStyle='rgba(255,255,255,.3)';c.stroke();}
+    // red dimensions + label
+    c.strokeStyle='rgba(255,72,80,.75)';c.lineWidth=1.2;c.beginPath();
+    c.moveTo(X(0),Y(-26));c.lineTo(X(160),Y(-26));c.moveTo(X(0),Y(-33));c.lineTo(X(0),Y(-19));c.moveTo(X(160),Y(-33));c.lineTo(X(160),Y(-19));
+    c.moveTo(X(-26),Y(0));c.lineTo(X(-26),Y(160));c.moveTo(X(-33),Y(0));c.lineTo(X(-19),Y(0));c.moveTo(X(-33),Y(160));c.lineTo(X(-19),Y(160));c.stroke();
+    var fs=Math.max(10,Math.min(14,8*s));c.font='500 '+fs+'px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace';c.fillStyle='rgba(255,72,80,.9)';c.textAlign='center';
+    c.fillText('40',X(80),Y(-33));c.save();c.translate(X(-33),Y(80));c.rotate(-Math.PI/2);c.fillText('40',0,0);c.restore();
+    c.fillText(label+' · PH-40×40',X(80),Y(236));
+    c.globalAlpha=1;
+  }
   function frame(){
     ticking=false;
-    var vh=innerHeight,vw=innerWidth,r=sec.getBoundingClientRect();
-    var p=(vh-r.top)/vh;                       // 0: section top at screen bottom, 1: at screen top
-    if(p<=0.02||p>=1){wrap.classList.remove('on');return;}
-    wrap.classList.add('on');
-    var top=Math.max(r.top,0),h=vh-top,rad=parseFloat(getComputedStyle(sec).borderTopLeftRadius)||0;
-    [plate,mbg,clip].forEach(function(el){el.setAttribute('x',r.left);el.setAttribute('y',r.top);el.setAttribute('width',r.width);el.setAttribute('height',Math.max(0,Math.min(r.bottom,vh+rad)-r.top));el.setAttribute('rx',rad);});
-    var s0=Math.min(vw,vh)*0.34/160, s1=Math.hypot(vw,vh)*1.15/100;   // 1.15: profile core (100 units) must clear the screen diagonal
-    var q=Math.max(0,Math.min(1,(p-0.3)/0.58));                       // plate rises first, then the zoom (done by p=0.88)
-    q=q*q*(3-2*q);
-    var s=s0*Math.pow(s1/s0,q);
-    var cx=r.left+r.width/2,cy=top+h/2;
-    if(q>0)cy=(top+h/2)*(1-q)+(vh/2)*q;
-    var tf='translate('+cx.toFixed(1)+' '+cy.toFixed(1)+') scale('+s.toFixed(4)+') translate(-80 -80)';
-    for(var i=0;i<gs.length;i++)gs[i].setAttribute('transform',tf);
-    var f=Math.max(0,Math.min(1,(q-0.62)/0.38));wrap.style.opacity=(1-f*f).toFixed(3);   // dissolve while passing through
+    var r=scene.getBoundingClientRect(),vh=innerHeight;
+    if(r.bottom<-50||r.top>vh+50)return;                 // off screen: nothing to do
+    var run=Math.max(1,r.height-H),t=Math.max(0,Math.min(1,-r.top/run));
+    var q=Math.min(1,t/0.78);q=q*q*(3-2*q);
+    var s0=Math.min(W,H)*0.3/160,zmax=Math.hypot(W,H)*1.15/(100*s0);
+    var z=Math.pow(zmax,q),f=Math.max(0,Math.min(1,(t-0.55)/0.3)),alpha=1-f*f;
+    var key=z.toFixed(3)+'|'+alpha.toFixed(3);if(key===lastKey)return;lastKey=key;
+    draw(z,alpha);
+    under.style.opacity=(0.25+0.75*Math.min(1,t/0.6)).toFixed(3);
   }
   function req(){if(!ticking){ticking=true;requestAnimationFrame(frame);}}
-  addEventListener('scroll',req,{passive:true});addEventListener('resize',req);frame();
+  resize();frame();
+  addEventListener('scroll',req,{passive:true});
+  addEventListener('resize',function(){resize();req();});
 })();
