@@ -562,17 +562,9 @@ p:last-child{margin-bottom:0}
 @media (prefers-reduced-motion:reduce){.bp-tr{translate:none}}
 @media (max-width:860px){.bp-art{opacity:.4}.bp-tr{opacity:.32}}
 
-/* v3.5 — "through the die": pinned scene at the top of the extrusion panel, plate drawn on a canvas */
-#uslugi > .die-scene{position:relative;z-index:2;height:200vh;height:200svh;margin-top:calc(-1 * var(--sec));margin-bottom:var(--sec);margin-inline:0}
-.die-stage{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden}
-.die-cv{position:absolute;inset:0;display:block}
-.die-under{position:absolute;inset:0;display:grid;place-items:center;align-content:center;gap:18px;background-image:linear-gradient(rgba(0,32,57,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(0,32,57,.06) 1px,transparent 1px);background-size:40px 40px;background-position:center}
-.die-under svg{width:min(62vw,56vh);height:auto;overflow:visible}
-.die-under .u-ln{stroke:var(--navy);stroke-width:1.6;stroke-linejoin:round}
-.die-under .u-cl{stroke:rgba(0,32,57,.35);stroke-width:1;stroke-dasharray:14 4 2 4}
-.die-under .u-dim{stroke:var(--red);stroke-width:1.2}
-.die-under text{fill:var(--red);font:500 11px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;stroke:none}
-.die-under .u-cap{font:500 12px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.14em;color:rgba(0,32,57,.6);border:1px solid rgba(0,32,57,.3);padding:8px 12px}
+/* v3.6 — "through the die": one fixed canvas over the page, drawn only inside the extrusion panel */
+.die-cv{position:fixed;left:0;top:0;width:100vw;height:100vh;height:100lvh;z-index:40;pointer-events:none;visibility:hidden}
+#uslugi.die-sec{margin-top:clamp(40px,14vh,160px)}
 .hdr{z-index:60}
 /* more room before the extrusion panel, so the die arrives as its own moment */
 

@@ -170,9 +170,10 @@ document.documentElement.classList.add('js');
   addEventListener('resize',upd);upd();
 })();
 
-// "through the die" (v3, Apple-style pinned scene): a tall scene at the top of the extrusion panel pins a
-// full-screen stage while you scroll; a canvas redraws the die plate every frame (crisp at any zoom, cheap on
-// phones), and behind it waits a blueprint of the 40x40 profile that "came out" of the die.
+// "through the die" (v4): the extrusion panel arrives as a steel die plate with a 40x40 profile-shaped
+// opening; the view zooms through the opening into the real panel underneath. Drawn on one fixed canvas
+// (fast on phones, crisp at any zoom), only inside the panel's own rounded box, so nothing spills onto
+// the panel above. The canvas uses the largest viewport height, so iOS toolbars never leave a gap.
 (function(){
   var sec=document.getElementById('uslugi');
   if(!sec||!window.requestAnimationFrame||!document.createElement('canvas').getContext)return;
@@ -180,66 +181,47 @@ document.documentElement.classList.add('js');
   var T='M0 0 L60 0 L60 10 L44 10 L44 30 L116 30 L116 10 L100 10 L100 0 L160 0 L160 60 L150 60 L150 44 L130 44 L130 116 L150 116 L150 100 L160 100 L160 160 L100 160 L100 150 L116 150 L116 130 L44 130 L44 150 L60 150 L60 160 L0 160 L0 100 L10 100 L10 116 L30 116 L30 44 L10 44 L10 60 L0 60 Z';
   var pts=T.replace(/[MLZ]/g,' ').trim().split(/\s+/).map(Number);
   var label=(sec.getAttribute('data-die')||'matryca').toUpperCase();
-  var scene=document.createElement('div');scene.className='die-scene';scene.setAttribute('aria-hidden','true');
-  scene.innerHTML='<div class="die-stage"><div class="die-under"><svg viewBox="-70 -60 300 300" fill="none">'+
-    '<path d="'+T+'" class="u-ln"/><circle cx="80" cy="80" r="16" class="u-ln"/><circle cx="80" cy="80" r="7" class="u-ln"/>'+
-    '<path d="M80 -20 V180 M-20 80 H180" class="u-cl"/>'+
-    '<path d="M0 -30 H160 M0 -37 V-23 M160 -37 V-23 M-30 0 V160 M-37 0 H-23 M-37 160 H-23" class="u-dim"/>'+
-    '<text x="80" y="-38" text-anchor="middle">40</text><text x="-40" y="84" text-anchor="middle" transform="rotate(-90 -40 84)">40</text>'+
-    '</svg><span class="u-cap">PROFIL · 40 × 40 · 1:1</span></div><canvas class="die-cv"></canvas></div>';
-  sec.insertBefore(scene,sec.firstChild);sec.classList.add('die-sec');
-  var cv=scene.querySelector('.die-cv'),cx=cv.getContext('2d'),stage=scene.querySelector('.die-stage'),under=scene.querySelector('.die-under');
-  var W=0,H=0,DPR=1,ticking=false,lastKey='';
-  function resize(){
-    DPR=Math.min(window.devicePixelRatio||1,2);
-    W=stage.clientWidth;H=stage.clientHeight;
-    cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);cv.style.width=W+'px';cv.style.height=H+'px';lastKey='';
-  }
-  function draw(z,alpha){
-    var c=cx;c.setTransform(DPR,0,0,DPR,0,0);c.clearRect(0,0,W,H);
-    if(alpha<=0.001)return;
-    c.globalAlpha=alpha;
-    var s0=Math.min(W,H)*0.3/160,s=s0*z,ox=W/2-80*s,oy=H/2-80*s;
-    function X(u){return ox+u*s}function Y(u){return oy+u*s}
-    // plate with the profile-shaped opening (even-odd)
-    var g=c.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.hypot(W,H)*0.6);
-    g.addColorStop(0,'#2d3036');g.addColorStop(.5,'#1d1f23');g.addColorStop(1,'#131417');
-    c.beginPath();c.rect(-2,-2,W+4,H+4);
-    c.moveTo(X(pts[0]),Y(pts[1]));for(var i=2;i<pts.length;i+=2)c.lineTo(X(pts[i]),Y(pts[i+1]));c.closePath();
-    c.fillStyle=g;c.fill('evenodd');
-    // hot glow around the opening
-    var gl=c.createRadialGradient(X(80),Y(80),70*s,X(80),Y(80),150*s);
-    gl.addColorStop(0,'rgba(255,90,20,0)');gl.addColorStop(.35,'rgba(255,90,20,.22)');gl.addColorStop(1,'rgba(255,60,10,0)');
-    c.fillStyle=gl;c.beginPath();c.rect(-2,-2,W+4,H+4);c.moveTo(X(pts[0]),Y(pts[1]));for(i=2;i<pts.length;i+=2)c.lineTo(X(pts[i]),Y(pts[i+1]));c.closePath();c.fill('evenodd');
-    // opening edge
-    c.lineWidth=1.4;c.strokeStyle='rgba(255,255,255,.6)';c.beginPath();c.moveTo(X(pts[0]),Y(pts[1]));for(i=2;i<pts.length;i+=2)c.lineTo(X(pts[i]),Y(pts[i+1]));c.closePath();c.stroke();
-    // rings
-    function ring(r,a,dash){c.beginPath();c.setLineDash(dash||[]);c.strokeStyle='rgba(255,255,255,'+a+')';c.lineWidth=1.1;c.arc(X(80),Y(80),r*s,0,7);c.stroke();}
-    ring(122,.16);ring(140,.12,[6,6]);ring(200,.14);ring(330,.08);ring(520,.06,[10,10]);c.setLineDash([]);
-    // bolts
-    for(var k=0;k<6;k++){var a=k*Math.PI/3+Math.PI/6,bx=X(80+168*Math.cos(a)),by=Y(80+168*Math.sin(a));
-      c.beginPath();c.arc(bx,by,10*s,0,7);c.fillStyle='#121316';c.fill();c.strokeStyle='rgba(255,255,255,.24)';c.stroke();
-      c.beginPath();c.arc(bx,by,4*s,0,7);c.strokeStyle='rgba(255,255,255,.3)';c.stroke();}
-    // red dimensions + label
-    c.strokeStyle='rgba(255,72,80,.75)';c.lineWidth=1.2;c.beginPath();
-    c.moveTo(X(0),Y(-26));c.lineTo(X(160),Y(-26));c.moveTo(X(0),Y(-33));c.lineTo(X(0),Y(-19));c.moveTo(X(160),Y(-33));c.lineTo(X(160),Y(-19));
-    c.moveTo(X(-26),Y(0));c.lineTo(X(-26),Y(160));c.moveTo(X(-33),Y(0));c.lineTo(X(-19),Y(0));c.moveTo(X(-33),Y(160));c.lineTo(X(-19),Y(160));c.stroke();
-    var fs=Math.max(10,Math.min(14,8*s));c.font='500 '+fs+'px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace';c.fillStyle='rgba(255,72,80,.9)';c.textAlign='center';
-    c.fillText('40',X(80),Y(-33));c.save();c.translate(X(-33),Y(80));c.rotate(-Math.PI/2);c.fillText('40',0,0);c.restore();
-    c.fillText(label+' · PH-40×40',X(80),Y(236));
-    c.globalAlpha=1;
-  }
+  var cv=document.createElement('canvas');cv.className='die-cv';cv.setAttribute('aria-hidden','true');
+  document.body.appendChild(cv);sec.classList.add('die-sec');
+  var c=cv.getContext('2d'),W=0,H=0,DPR=1,ticking=false,shown=false,last='';
+  function resize(){DPR=Math.min(window.devicePixelRatio||1,2);W=cv.clientWidth;H=cv.clientHeight;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);last='';}
+  function rr(x,y,w,h,r){c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.arcTo(x+w,y,x+w,y+r,r);c.lineTo(x+w,y+h-r);c.arcTo(x+w,y+h,x+w-r,y+h,r);c.lineTo(x+r,y+h);c.arcTo(x,y+h,x,y+h-r,r);c.lineTo(x,y+r);c.arcTo(x,y,x+r,y,r);c.closePath();}
   function frame(){
     ticking=false;
-    var r=scene.getBoundingClientRect(),vh=innerHeight;
-    if(r.bottom<-50||r.top>vh+50)return;                 // off screen: nothing to do
-    var run=Math.max(1,r.height-H),t=Math.max(0,Math.min(1,-r.top/run));
-    var q=Math.min(1,t/0.78);q=q*q*(3-2*q);
-    var s0=Math.min(W,H)*0.3/160,zmax=Math.hypot(W,H)*1.15/(100*s0);
-    var z=Math.pow(zmax,q),f=Math.max(0,Math.min(1,(t-0.55)/0.3)),alpha=1-f*f;
-    var key=z.toFixed(3)+'|'+alpha.toFixed(3);if(key===lastKey)return;lastKey=key;
-    draw(z,alpha);
-    under.style.opacity=(0.25+0.75*Math.min(1,t/0.6)).toFixed(3);
+    var vh=innerHeight,r=sec.getBoundingClientRect(),p=(vh-r.top)/vh;   // 0: panel top at screen bottom, 1: at screen top
+    if(p<=0.01||p>=1){if(shown){c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,cv.width,cv.height);cv.style.visibility='hidden';shown=false;last='';}return;}
+    if(!shown){cv.style.visibility='visible';shown=true;}
+    var q=Math.max(0,Math.min(1,(p-0.3)/0.58));q=q*q*(3-2*q);
+    var f=Math.max(0,Math.min(1,(q-0.62)/0.38)),alpha=1-f*f;
+    var key=r.top.toFixed(1)+'|'+W+'|'+H;if(key===last)return;last=key;
+    var rad=parseFloat(getComputedStyle(sec).borderTopLeftRadius)||0;
+    var bx=r.left,by=r.top,bw=r.width,bh=Math.min(r.bottom,H+rad)-r.top;    // panel box, cut below the canvas
+    var top=Math.max(r.top,0),vis=vh-top;
+    var s0=Math.min(bw,vh)*0.34/160,s1=Math.hypot(bw,vh)*1.15/100,s=s0*Math.pow(s1/s0,q);
+    var cx=bx+bw/2,cy=top+vis/2;if(q>0)cy=cy*(1-q)+(vh/2)*q;
+    var ox=cx-80*s,oy=cy-80*s;function X(u){return ox+u*s}function Y(u){return oy+u*s}
+    function hole(){c.moveTo(X(pts[0]),Y(pts[1]));for(var i=2;i<pts.length;i+=2)c.lineTo(X(pts[i]),Y(pts[i+1]));c.closePath();}
+    c.setTransform(DPR,0,0,DPR,0,0);c.clearRect(0,0,W,H);c.globalAlpha=alpha;
+    c.save();c.beginPath();rr(bx,by,bw,bh,rad);c.clip();
+    var g=c.createRadialGradient(cx,cy,0,cx,cy,Math.hypot(bw,vh)*0.7);
+    g.addColorStop(0,'#2d3036');g.addColorStop(.5,'#1d1f23');g.addColorStop(1,'#131417');
+    c.beginPath();c.rect(bx,by,bw,bh);hole();c.fillStyle=g;c.fill('evenodd');
+    var gl=c.createRadialGradient(X(80),Y(80),70*s,X(80),Y(80),150*s);
+    gl.addColorStop(0,'rgba(255,90,20,0)');gl.addColorStop(.35,'rgba(255,90,20,.2)');gl.addColorStop(1,'rgba(255,60,10,0)');
+    c.beginPath();c.rect(bx,by,bw,bh);hole();c.fillStyle=gl;c.fill('evenodd');
+    c.lineWidth=1.4;c.strokeStyle='rgba(255,255,255,.6)';c.beginPath();hole();c.stroke();
+    function ring(rr_,a,dash){c.beginPath();c.setLineDash(dash||[]);c.strokeStyle='rgba(255,255,255,'+a+')';c.lineWidth=1.1;c.arc(X(80),Y(80),rr_*s,0,7);c.stroke();}
+    ring(122,.16);ring(140,.12,[6,6]);ring(196,.14);ring(330,.07);c.setLineDash([]);
+    for(var k=0;k<6;k++){var a=k*Math.PI/3+Math.PI/6,px=X(80+168*Math.cos(a)),py=Y(80+168*Math.sin(a));
+      c.beginPath();c.arc(px,py,9*s,0,7);c.fillStyle='#121316';c.fill();c.strokeStyle='rgba(255,255,255,.22)';c.stroke();
+      c.beginPath();c.arc(px,py,4*s,0,7);c.strokeStyle='rgba(255,255,255,.3)';c.stroke();}
+    c.strokeStyle='rgba(255,72,80,.7)';c.lineWidth=1.2;c.beginPath();
+    c.moveTo(X(0),Y(-26));c.lineTo(X(160),Y(-26));c.moveTo(X(0),Y(-33));c.lineTo(X(0),Y(-19));c.moveTo(X(160),Y(-33));c.lineTo(X(160),Y(-19));
+    c.moveTo(X(-26),Y(0));c.lineTo(X(-26),Y(160));c.moveTo(X(-33),Y(0));c.lineTo(X(-19),Y(0));c.moveTo(X(-33),Y(160));c.lineTo(X(-19),Y(160));c.stroke();
+    var fs=Math.max(10,Math.min(13,7*s));c.font='500 '+fs+'px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace';c.fillStyle='rgba(255,72,80,.88)';c.textAlign='center';
+    c.fillText('40',X(80),Y(-33));c.save();c.translate(X(-33),Y(80));c.rotate(-Math.PI/2);c.fillText('40',0,0);c.restore();
+    c.fillText(label+' · PH-40×40',X(80),Y(226));
+    c.restore();c.globalAlpha=1;
   }
   function req(){if(!ticking){ticking=true;requestAnimationFrame(frame);}}
   resize();frame();
