@@ -572,3 +572,5 @@ p:last-child{margin-bottom:0}
 .die .edge{fill:none;stroke:rgba(255,255,255,.55)}
 .die .lbl{fill:rgba(255,72,80,.85);font:500 7px ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;letter-spacing:.12em}
 .die .dimd{fill:none;stroke:rgba(255,72,80,.6)}
+/* more room before the extrusion panel, so the die arrives as its own moment */
+#uslugi.die-sec{margin-top:clamp(40px,14vh,160px)}

@@ -183,9 +183,10 @@ document.documentElement.classList.add('js');
   var wrap=document.createElement('div');wrap.className='die';wrap.setAttribute('aria-hidden','true');
   wrap.innerHTML='<svg xmlns="'+NS+'"><defs>'+
     '<linearGradient id="dieg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a2d32"/><stop offset=".5" stop-color="#1b1d21"/><stop offset="1" stop-color="#131417"/></linearGradient>'+
-    '<mask id="diem" maskUnits="userSpaceOnUse"><rect class="m-bg" fill="#fff"/><g class="zg"><path d="'+P+'" fill="#000"/></g></mask></defs>'+
-    '<rect class="plate" fill="url(#dieg)" mask="url(#diem)" rx="28"/>'+
-    '<g class="zg">'+
+    '<mask id="diem" maskUnits="userSpaceOnUse"><rect class="m-bg" fill="#fff"/><g class="zg"><path d="'+P+'" fill="#000"/></g></mask>'+
+    '<clipPath id="diec"><rect class="c-r"/></clipPath></defs>'+
+    '<rect class="plate" fill="url(#dieg)" mask="url(#diem)"/>'+
+    '<g clip-path="url(#diec)"><g class="zg">'+
       '<circle class="ring" cx="80" cy="80" r="122" vector-effect="non-scaling-stroke"/>'+
       '<circle class="ring-d" cx="80" cy="80" r="140" vector-effect="non-scaling-stroke"/>'+
       '<circle class="ring" cx="80" cy="80" r="196" vector-effect="non-scaling-stroke"/>'+bolts+
@@ -194,23 +195,23 @@ document.documentElement.classList.add('js');
       '<text class="lbl" x="80" y="-32" text-anchor="middle">40</text>'+
       '<text class="lbl" x="-34" y="82" text-anchor="middle" transform="rotate(-90 -34 82)">40</text>'+
       '<text class="lbl" x="80" y="226" text-anchor="middle">'+label.replace(/[<&]/g,'')+' · PH-40×40</text>'+
-    '</g></svg>';
+    '</g></g></svg>';
   document.body.appendChild(wrap);
   sec.classList.add('die-sec');
-  var plate=wrap.querySelector('.plate'),mbg=wrap.querySelector('.m-bg'),gs=wrap.querySelectorAll('.zg'),ticking=false;
+  var plate=wrap.querySelector('.plate'),mbg=wrap.querySelector('.m-bg'),clip=wrap.querySelector('.c-r'),gs=wrap.querySelectorAll('.zg'),ticking=false;
   function frame(){
     ticking=false;
     var vh=innerHeight,vw=innerWidth,r=sec.getBoundingClientRect();
     var p=(vh-r.top)/vh;                       // 0: section top at screen bottom, 1: at screen top
     if(p<=0.02||p>=1){wrap.classList.remove('on');return;}
     wrap.classList.add('on');
-    var top=Math.max(r.top,0),h=vh-top;
-    [plate,mbg].forEach(function(el){el.setAttribute('x',0);el.setAttribute('y',top);el.setAttribute('width',vw);el.setAttribute('height',h+40);});
+    var top=Math.max(r.top,0),h=vh-top,rad=parseFloat(getComputedStyle(sec).borderTopLeftRadius)||0;
+    [plate,mbg,clip].forEach(function(el){el.setAttribute('x',r.left);el.setAttribute('y',r.top);el.setAttribute('width',r.width);el.setAttribute('height',Math.max(0,Math.min(r.bottom,vh+rad)-r.top));el.setAttribute('rx',rad);});
     var s0=Math.min(vw,vh)*0.34/160, s1=Math.hypot(vw,vh)*1.15/100;   // 1.15: profile core (100 units) must clear the screen diagonal
     var q=Math.max(0,Math.min(1,(p-0.3)/0.58));                       // plate rises first, then the zoom (done by p=0.88)
     q=q*q*(3-2*q);
     var s=s0*Math.pow(s1/s0,q);
-    var cx=vw/2,cy=top+h/2+(1-q)*0;
+    var cx=r.left+r.width/2,cy=top+h/2;
     if(q>0)cy=(top+h/2)*(1-q)+(vh/2)*q;
     var tf='translate('+cx.toFixed(1)+' '+cy.toFixed(1)+') scale('+s.toFixed(4)+') translate(-80 -80)';
     for(var i=0;i<gs.length;i++)gs[i].setAttribute('transform',tf);
