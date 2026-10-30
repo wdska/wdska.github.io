@@ -573,3 +573,18 @@ p:last-child{margin-bottom:0}
 
 
 @media (max-width:860px){.sec.white .split > .net{order:2}.sec.white .split > .h-block{order:1}}
+
+/* v3.8 — "Baza producentów" uses the same panel colour as its neighbours (its drawing keeps the white card) */
+.sec.white{background:var(--panel)}
+/* lighter, smoother reveal: short rise + fade, no scaling of whole panels */
+.rv{transform:translate3d(0,20px,0);transition:opacity .6s cubic-bezier(.2,.7,.2,1) var(--rv-d,0s),transform .75s cubic-bezier(.2,.7,.2,1) var(--rv-d,0s)}
+.sec.rv-panel{transform:translate3d(0,36px,0)}
+@media (max-width:860px),(hover:none){
+  .sec.rv-panel,.sec.rv-panel.in{transform:none;opacity:1;transition:none}
+  .rv{transform:translate3d(0,14px,0);transition:opacity .5s ease-out var(--rv-d,0s),transform .55s ease-out var(--rv-d,0s)}
+  .bp-draw .ln,.bp-draw .dim{transition:none!important;stroke-dashoffset:0!important}
+  .bp-draw text,.bp-draw .cl{transition:none!important;opacity:1!important}
+  .bp-art{translate:0 0!important;will-change:auto}
+  .bp-tr{translate:0 0!important}
+  .rv-pic img{transform:none!important;transition:none!important}
+}

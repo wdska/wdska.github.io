@@ -126,6 +126,7 @@ document.documentElement.classList.add('js');
 (function(){
   if(!('IntersectionObserver' in window))return;
   if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  var touch=window.matchMedia&&matchMedia('(max-width: 860px), (hover: none)').matches;
   var groups=[
     ['.hero h1,.hero .lead,.hero .btns,.hero .hero-facts,.hero .spec',0.12],
     ['.h-block > *',0.08],
@@ -144,7 +145,7 @@ document.documentElement.classList.add('js');
     document.querySelectorAll(gr[0]).forEach(function(el){
       if(el.classList.contains('rv'))return;
       var p=el.parentNode,k=seen.get(p)||0;seen.set(p,k+1);
-      el.classList.add('rv');el.style.setProperty('--rv-d',Math.min(k*gr[1],.6)+'s');els.push(el);
+      el.classList.add('rv');el.style.setProperty('--rv-d',Math.min(k*gr[1]*(touch?.6:1),touch?.25:.5)+'s');els.push(el);
     });
   });
   document.querySelectorAll('.proc,.jit,.ceo,.docs .pic,.person img').forEach(function(el){
@@ -154,7 +155,7 @@ document.documentElement.classList.add('js');
   document.querySelectorAll('main > .sec').forEach(function(el){if(el.id==='uslugi'){el.classList.add('in');return;}el.classList.add('rv-panel');els.push(el);});
   var io=new IntersectionObserver(function(es){
     es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});
-  },{rootMargin:'0px 0px -8% 0px',threshold:0});
+  },{rootMargin:touch?'0px 0px -4% 0px':'0px 0px -8% 0px',threshold:0});
   els.forEach(function(el){io.observe(el);});
   // safety net: anything still hidden after load + 4s (e.g. printed or odd viewport) becomes visible
   window.addEventListener('load',function(){setTimeout(function(){els.forEach(function(el){var r=el.getBoundingClientRect();if(r.top<innerHeight&&r.bottom>0)el.classList.add('in');});},4000);});
@@ -163,6 +164,7 @@ document.documentElement.classList.add('js');
 // blueprint drawings drift slightly slower than the page (subtle parallax)
 (function(){
   if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  if(window.matchMedia&&matchMedia('(max-width: 860px), (hover: none)').matches)return;
   var arts=[].slice.call(document.querySelectorAll('.bp-art'));if(!arts.length)return;
   var ticking=false;
   function upd(){ticking=false;var vh=innerHeight;arts.forEach(function(a){var r=a.parentNode.getBoundingClientRect();if(r.bottom<0||r.top>vh)return;var c=(r.top+r.height/2-vh/2)/vh;a.style.setProperty('--bp-shift',(c*-60).toFixed(1)+'px');});}
