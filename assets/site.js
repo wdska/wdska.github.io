@@ -136,7 +136,6 @@ document.documentElement.classList.add('js');
     ['.steps > li',0.08],
     ['.docs > *',0.12],
     ['.contact-grid > form,.ask > form',0],
-    ['.gallery figure',0.06],
     ['.phead h1,.phead .lead',0.1]
   ];
   var els=[];
