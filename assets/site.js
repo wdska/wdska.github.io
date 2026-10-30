@@ -170,83 +170,61 @@ document.documentElement.classList.add('js');
   addEventListener('resize',upd);upd();
 })();
 
-// "through the die" (v5): the extrusion panel arrives as a steel die plate whose opening is the FIRST LETTER
-// of the panel's own heading (W / A / П / A, so every language adapts by itself), cut with the heading's real
-// font. Scrolling flies the opening onto that letter in the heading while the plate dissolves.
-// One fixed canvas, drawn only inside the panel's rounded box; 100lvh tall so iOS toolbars leave no gap.
+// "through the die" (v4): the extrusion panel arrives as a steel die plate with a 40x40 profile-shaped
+// opening; the view zooms through the opening into the real panel underneath. Drawn on one fixed canvas
+// (fast on phones, crisp at any zoom), only inside the panel's own rounded box, so nothing spills onto
+// the panel above. The canvas uses the largest viewport height, so iOS toolbars never leave a gap.
 (function(){
-  var sec=document.getElementById('uslugi'),h2=sec&&sec.querySelector('h2');
-  if(!sec||!h2||!window.requestAnimationFrame||!document.createElement('canvas').getContext)return;
+  var sec=document.getElementById('uslugi');
+  if(!sec||!window.requestAnimationFrame||!document.createElement('canvas').getContext)return;
   if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-  var tn=h2.firstChild;while(tn&&tn.nodeType!==3)tn=tn.firstChild;
-  if(!tn||!tn.data.trim())return;
-  var off=tn.data.search(/\S/),L=tn.data.charAt(off);
-  h2.classList.remove('rv');h2.classList.add('in');                 // heading stays put: it is the landing target
+  var T='M0 0 L60 0 L60 10 L44 10 L44 30 L116 30 L116 10 L100 10 L100 0 L160 0 L160 60 L150 60 L150 44 L130 44 L130 116 L150 116 L150 100 L160 100 L160 160 L100 160 L100 150 L116 150 L116 130 L44 130 L44 150 L60 150 L60 160 L0 160 L0 100 L10 100 L10 116 L30 116 L30 44 L10 44 L10 60 L0 60 Z';
+  var pts=T.replace(/[MLZ]/g,' ').trim().split(/\s+/).map(Number);
   var label=(sec.getAttribute('data-die')||'matryca').toUpperCase();
   var cv=document.createElement('canvas');cv.className='die-cv';cv.setAttribute('aria-hidden','true');
   document.body.appendChild(cv);sec.classList.add('die-sec');
-  var c=cv.getContext('2d'),W=0,H=0,DPR=1,ticking=false,shown=false,last='',fam='',wt='700',ready=false;
-  var hasStretch='fontStretch' in c;
-  function fontAt(px){return wt+' '+px.toFixed(2)+'px '+fam;}
-  function resize(){
-    DPR=Math.min(window.devicePixelRatio||1,2);W=cv.clientWidth;H=cv.clientHeight;
-    cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);last='';
-    var cs=getComputedStyle(h2);fam=cs.fontFamily;wt=cs.fontWeight;
-  }
+  var c=cv.getContext('2d'),W=0,H=0,DPR=1,ticking=false,shown=false,last='';
+  function resize(){DPR=Math.min(window.devicePixelRatio||1,2);W=cv.clientWidth;H=cv.clientHeight;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);last='';}
   function rr(x,y,w,h,r){c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.arcTo(x+w,y,x+w,y+r,r);c.lineTo(x+w,y+h-r);c.arcTo(x+w,y+h,x+w-r,y+h,r);c.lineTo(x+r,y+h);c.arcTo(x,y+h,x,y+h-r,r);c.lineTo(x,y+r);c.arcTo(x,y,x+r,y,r);c.closePath();}
-  var range=document.createRange();
-  function lerp(a,b,t){return a+(b-a)*t}
   function frame(){
     ticking=false;
-    var vh=innerHeight,r=sec.getBoundingClientRect(),p=(vh-r.top)/vh;    // 0: panel top at screen bottom, 1: at screen top
-    if(!ready||p<=0.01||p>=1.05){if(shown){c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,cv.width,cv.height);cv.style.visibility='hidden';shown=false;last='';}return;}
+    var vh=innerHeight,r=sec.getBoundingClientRect(),p=(vh-r.top)/vh;   // 0: panel top at screen bottom, 1: at screen top
+    if(p<=0.01||p>=1){if(shown){c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,cv.width,cv.height);cv.style.visibility='hidden';shown=false;last='';}return;}
     if(!shown){cv.style.visibility='visible';shown=true;}
-    range.setStart(tn,off);range.setEnd(tn,off+1);var g=range.getBoundingClientRect();   // the real letter on the page
-    var key=r.top.toFixed(1)+'|'+g.left.toFixed(1)+'|'+g.top.toFixed(1)+'|'+W+'|'+H;if(key===last)return;last=key;
-    c.setTransform(DPR,0,0,DPR,0,0);c.clearRect(0,0,W,H);
-    if(hasStretch)c.fontStretch='expanded';
-    var fsT=parseFloat(getComputedStyle(h2).fontSize);
-    c.font=fontAt(100);var m=c.measureText(L),wR=m.width/100,asc=(m.actualBoundingBoxAscent||72)/100,fAsc=(m.fontBoundingBoxAscent||92)/100;
+    var q=Math.max(0,Math.min(1,(p-0.3)/0.58));q=q*q*(3-2*q);
+    var f=Math.max(0,Math.min(1,(q-0.62)/0.38)),alpha=1-f*f;
+    var key=r.top.toFixed(1)+'|'+W+'|'+H;if(key===last)return;last=key;
     var rad=parseFloat(getComputedStyle(sec).borderTopLeftRadius)||0;
-    var bx=r.left,by=r.top,bw=r.width,bh=Math.min(r.bottom,H+rad)-r.top;
+    var bx=r.left,by=r.top,bw=r.width,bh=Math.min(r.bottom,H+rad)-r.top;    // panel box, cut below the canvas
     var top=Math.max(r.top,0),vis=vh-top;
-    // start: a big letter centred in the visible part of the plate; end: exactly on the heading's first letter
-    var fsS=Math.min(bw*0.62/wR,Math.max(vis,vh*0.5)*0.55/asc);
-    var xS=bx+bw/2-fsS*wR/2,yS=top+vis/2+fsS*asc/2;                  // baseline
-    var xT=g.left,yT=g.top+fsT*fAsc;
-    var q=Math.max(0,Math.min(1,(p-0.38)/0.52));q=q*q*(3-2*q);
-    var fs=Math.exp(lerp(Math.log(fsS),Math.log(fsT),q)),x=lerp(xS,xT,q),y=lerp(yS,yT,q);
-    var alpha=1-Math.max(0,Math.min(1,(q-0.82)/0.18));alpha=alpha*alpha*(3-2*alpha);   // plate stays solid until the letter lands
-    if(alpha<=0.003)return;
-    var lw=fs*wR,lh=fs*asc,lcx=x+lw/2,lcy=y-lh/2,R=Math.max(lw,lh)/2;
-    c.globalAlpha=alpha;c.save();c.beginPath();rr(bx,by,bw,bh,rad);c.clip();
-    var gr=c.createRadialGradient(lcx,lcy,0,lcx,lcy,Math.hypot(bw,vh)*0.7);
-    gr.addColorStop(0,'#2d3036');gr.addColorStop(.5,'#1d1f23');gr.addColorStop(1,'#131417');
-    c.fillStyle=gr;c.fillRect(bx,by,bw,bh);
-    // die rings, bolts and dimension lines around the opening
-    function ring(k,a,dash){c.beginPath();c.setLineDash(dash||[]);c.strokeStyle='rgba(255,255,255,'+a+')';c.lineWidth=1.1;c.arc(lcx,lcy,R*k,0,7);c.stroke();}
-    ring(1.35,.16);ring(1.55,.12,[6,6]);ring(2.1,.14);ring(3.4,.07);c.setLineDash([]);
-    for(var k=0;k<6;k++){var a=k*Math.PI/3+Math.PI/6,px=lcx+R*1.83*Math.cos(a),py=lcy+R*1.83*Math.sin(a),br=Math.max(3,R*.1);
-      c.beginPath();c.arc(px,py,br,0,7);c.fillStyle='#121316';c.fill();c.strokeStyle='rgba(255,255,255,.22)';c.stroke();
-      c.beginPath();c.arc(px,py,br*.42,0,7);c.strokeStyle='rgba(255,255,255,.3)';c.stroke();}
-    var d=Math.max(8,R*.16),t=Math.max(5,R*.07);
+    var s0=Math.min(bw,vh)*0.34/160,s1=Math.hypot(bw,vh)*1.15/100,s=s0*Math.pow(s1/s0,q);
+    var cx=bx+bw/2,cy=top+vis/2;if(q>0)cy=cy*(1-q)+(vh/2)*q;
+    var ox=cx-80*s,oy=cy-80*s;function X(u){return ox+u*s}function Y(u){return oy+u*s}
+    function hole(){c.moveTo(X(pts[0]),Y(pts[1]));for(var i=2;i<pts.length;i+=2)c.lineTo(X(pts[i]),Y(pts[i+1]));c.closePath();}
+    c.setTransform(DPR,0,0,DPR,0,0);c.clearRect(0,0,W,H);c.globalAlpha=alpha;
+    c.save();c.beginPath();rr(bx,by,bw,bh,rad);c.clip();
+    var g=c.createRadialGradient(cx,cy,0,cx,cy,Math.hypot(bw,vh)*0.7);
+    g.addColorStop(0,'#2d3036');g.addColorStop(.5,'#1d1f23');g.addColorStop(1,'#131417');
+    c.beginPath();c.rect(bx,by,bw,bh);hole();c.fillStyle=g;c.fill('evenodd');
+    var gl=c.createRadialGradient(X(80),Y(80),70*s,X(80),Y(80),150*s);
+    gl.addColorStop(0,'rgba(255,90,20,0)');gl.addColorStop(.35,'rgba(255,90,20,.2)');gl.addColorStop(1,'rgba(255,60,10,0)');
+    c.beginPath();c.rect(bx,by,bw,bh);hole();c.fillStyle=gl;c.fill('evenodd');
+    c.lineWidth=1.4;c.strokeStyle='rgba(255,255,255,.6)';c.beginPath();hole();c.stroke();
+    function ring(rr_,a,dash){c.beginPath();c.setLineDash(dash||[]);c.strokeStyle='rgba(255,255,255,'+a+')';c.lineWidth=1.1;c.arc(X(80),Y(80),rr_*s,0,7);c.stroke();}
+    ring(122,.16);ring(140,.12,[6,6]);ring(196,.14);ring(330,.07);c.setLineDash([]);
+    for(var k=0;k<6;k++){var a=k*Math.PI/3+Math.PI/6,px=X(80+168*Math.cos(a)),py=Y(80+168*Math.sin(a));
+      c.beginPath();c.arc(px,py,9*s,0,7);c.fillStyle='#121316';c.fill();c.strokeStyle='rgba(255,255,255,.22)';c.stroke();
+      c.beginPath();c.arc(px,py,4*s,0,7);c.strokeStyle='rgba(255,255,255,.3)';c.stroke();}
     c.strokeStyle='rgba(255,72,80,.7)';c.lineWidth=1.2;c.beginPath();
-    c.moveTo(x,y-lh-d);c.lineTo(x+lw,y-lh-d);c.moveTo(x,y-lh-d-t);c.lineTo(x,y-lh-d+t);c.moveTo(x+lw,y-lh-d-t);c.lineTo(x+lw,y-lh-d+t);
-    c.moveTo(x-d,y-lh);c.lineTo(x-d,y);c.moveTo(x-d-t,y-lh);c.lineTo(x-d+t,y-lh);c.moveTo(x-d-t,y);c.lineTo(x-d+t,y);c.stroke();
-    var mf=Math.max(10,Math.min(13,R*.09));c.font='500 '+mf+'px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace';
-    c.fillStyle='rgba(255,72,80,.88)';c.textAlign='center';c.textBaseline='alphabetic';
-    c.fillText(label+' · '+L,lcx,lcy+R*1.83+R*.1+mf*1.6);
-    // hot glow, then cut the letter-shaped opening with the heading's real font
-    c.textAlign='left';c.font=fontAt(fs);if(hasStretch)c.fontStretch='expanded';
-    c.save();c.shadowColor='rgba(255,90,20,.75)';c.shadowBlur=Math.max(12,fs*.12);c.fillStyle='rgba(255,90,20,.35)';c.fillText(L,x,y);c.restore();
-    c.globalCompositeOperation='destination-out';c.fillStyle='#000';c.fillText(L,x,y);c.globalCompositeOperation='source-over';
-    c.lineWidth=1.4;c.strokeStyle='rgba(255,255,255,.6)';c.lineJoin='round';c.strokeText(L,x,y);
+    c.moveTo(X(0),Y(-26));c.lineTo(X(160),Y(-26));c.moveTo(X(0),Y(-33));c.lineTo(X(0),Y(-19));c.moveTo(X(160),Y(-33));c.lineTo(X(160),Y(-19));
+    c.moveTo(X(-26),Y(0));c.lineTo(X(-26),Y(160));c.moveTo(X(-33),Y(0));c.lineTo(X(-19),Y(0));c.moveTo(X(-33),Y(160));c.lineTo(X(-19),Y(160));c.stroke();
+    var fs=Math.max(10,Math.min(13,7*s));c.font='500 '+fs+'px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace';c.fillStyle='rgba(255,72,80,.88)';c.textAlign='center';
+    c.fillText('40',X(80),Y(-33));c.save();c.translate(X(-33),Y(80));c.rotate(-Math.PI/2);c.fillText('40',0,0);c.restore();
+    c.fillText(label+' · PH-40×40',X(80),Y(226));
     c.restore();c.globalAlpha=1;
   }
   function req(){if(!ticking){ticking=true;requestAnimationFrame(frame);}}
-  resize();
-  var go=function(){ready=true;resize();frame();};
-  if(document.fonts&&document.fonts.load){document.fonts.load(wt+' 100px '+fam,L).then(go,go);setTimeout(go,2500);}else go();
+  resize();frame();
   addEventListener('scroll',req,{passive:true});
   addEventListener('resize',function(){resize();req();});
 })();
