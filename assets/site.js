@@ -49,7 +49,7 @@ document.documentElement.classList.add('js');
 
   // forms -> Google Apps Script
   // Google Apps Script web app that e-mails the lead to biuro@profilehouse.pl (see apps-script/Code.gs)
-  var LEAD_URL='';
+  var LEAD_URL='https://script.google.com/macros/s/AKfycbxTtryOgBKh3BRngWvWxe1l2lms4DEd2yquanl6wEv3EtGMlJ9iaNl433kSewo0VDt5fA/exec';
   var LIVE=/(^|\.)profilehouse\.pl$|\.github\.io$/.test(location.hostname);
   document.querySelectorAll('form[data-lead]').forEach(function(f){
     var msg=f.querySelector('.form-msg');
