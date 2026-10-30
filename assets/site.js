@@ -230,3 +230,16 @@ document.documentElement.classList.add('js');
   addEventListener('scroll',req,{passive:true});
   addEventListener('resize',function(){resize();req();});
 })();
+
+// mobile language dropdown: close on outside tap / Escape, and close the burger menu when it opens
+(function(){
+  var dd=document.querySelector('.lang-dd');if(!dd)return;
+  dd.addEventListener('toggle',function(){
+    if(!dd.open)return;
+    var b=document.querySelector('.burger'),m=document.getElementById('menu');
+    if(b&&b.getAttribute('aria-expanded')==='true'){b.setAttribute('aria-expanded','false');m.classList.remove('open');document.body.style.overflow='';}
+  });
+  document.addEventListener('click',function(e){if(dd.open&&!dd.contains(e.target))dd.open=false;});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&dd.open){dd.open=false;dd.querySelector('summary').focus();}});
+  var b=document.querySelector('.burger');if(b)b.addEventListener('click',function(){dd.open=false;});
+})();
