@@ -159,3 +159,13 @@ document.documentElement.classList.add('js');
   // safety net: anything still hidden after load + 4s (e.g. printed or odd viewport) becomes visible
   window.addEventListener('load',function(){setTimeout(function(){els.forEach(function(el){var r=el.getBoundingClientRect();if(r.top<innerHeight&&r.bottom>0)el.classList.add('in');});},4000);});
 })();
+
+// blueprint drawings drift slightly slower than the page (subtle parallax)
+(function(){
+  if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  var arts=[].slice.call(document.querySelectorAll('.bp-art'));if(!arts.length)return;
+  var ticking=false;
+  function upd(){ticking=false;var vh=innerHeight;arts.forEach(function(a){var r=a.parentNode.getBoundingClientRect();if(r.bottom<0||r.top>vh)return;var c=(r.top+r.height/2-vh/2)/vh;a.style.setProperty('--bp-shift',(c*-60).toFixed(1)+'px');});}
+  addEventListener('scroll',function(){if(!ticking){ticking=true;requestAnimationFrame(upd);}},{passive:true});
+  addEventListener('resize',upd);upd();
+})();
