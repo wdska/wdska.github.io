@@ -151,7 +151,7 @@ document.documentElement.classList.add('js');
     if(el.closest('.rv'))return;el.classList.add('rv');els.push(el);
   });
   document.querySelectorAll('.docs .pic').forEach(function(el){el.classList.add('rv-pic');});
-  document.querySelectorAll('main > .sec').forEach(function(el){el.classList.add('rv-panel');els.push(el);});
+  document.querySelectorAll('main > .sec').forEach(function(el){if(el.id==='uslugi'){el.classList.add('in');return;}el.classList.add('rv-panel');els.push(el);});
   var io=new IntersectionObserver(function(es){
     es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});
   },{rootMargin:'0px 0px -8% 0px',threshold:0});
@@ -168,4 +168,54 @@ document.documentElement.classList.add('js');
   function upd(){ticking=false;var vh=innerHeight;arts.forEach(function(a){var r=a.parentNode.getBoundingClientRect();if(r.bottom<0||r.top>vh)return;var c=(r.top+r.height/2-vh/2)/vh;a.style.setProperty('--bp-shift',(c*-60).toFixed(1)+'px');});}
   addEventListener('scroll',function(){if(!ticking){ticking=true;requestAnimationFrame(upd);}},{passive:true});
   addEventListener('resize',upd);upd();
+})();
+
+// "through the die": a steel die plate with a 40x40 profile-shaped opening rises over the extrusion
+// section and the view zooms through the opening into it. Section itself is unchanged underneath.
+(function(){
+  var sec=document.getElementById('uslugi');
+  if(!sec||!window.requestAnimationFrame)return;
+  if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  var NS='http://www.w3.org/2000/svg';
+  var P='M0 0 L60 0 L60 10 L44 10 L44 30 L116 30 L116 10 L100 10 L100 0 L160 0 L160 60 L150 60 L150 44 L130 44 L130 116 L150 116 L150 100 L160 100 L160 160 L100 160 L100 150 L116 150 L116 130 L44 130 L44 150 L60 150 L60 160 L0 160 L0 100 L10 100 L10 116 L30 116 L30 44 L10 44 L10 60 L0 60 Z';
+  var label=(sec.getAttribute('data-die')||'matryca').toUpperCase();
+  var bolts='';for(var k=0;k<6;k++){var a=k*Math.PI/3+Math.PI/6,x=80+168*Math.cos(a),y=80+168*Math.sin(a);bolts+='<circle class="bolt" cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="9" vector-effect="non-scaling-stroke"/><circle class="ring" cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="4" vector-effect="non-scaling-stroke"/>';}
+  var wrap=document.createElement('div');wrap.className='die';wrap.setAttribute('aria-hidden','true');
+  wrap.innerHTML='<svg xmlns="'+NS+'"><defs>'+
+    '<linearGradient id="dieg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a2d32"/><stop offset=".5" stop-color="#1b1d21"/><stop offset="1" stop-color="#131417"/></linearGradient>'+
+    '<mask id="diem" maskUnits="userSpaceOnUse"><rect class="m-bg" fill="#fff"/><g class="zg"><path d="'+P+'" fill="#000"/></g></mask></defs>'+
+    '<rect class="plate" fill="url(#dieg)" mask="url(#diem)" rx="28"/>'+
+    '<g class="zg">'+
+      '<circle class="ring" cx="80" cy="80" r="122" vector-effect="non-scaling-stroke"/>'+
+      '<circle class="ring-d" cx="80" cy="80" r="140" vector-effect="non-scaling-stroke"/>'+
+      '<circle class="ring" cx="80" cy="80" r="196" vector-effect="non-scaling-stroke"/>'+bolts+
+      '<path class="edge" d="'+P+'" vector-effect="non-scaling-stroke"/>'+
+      '<path class="dimd" d="M0 -26 H160 M0 -32 V-20 M160 -32 V-20 M-26 0 V160 M-32 0 H-20 M-32 160 H-20" vector-effect="non-scaling-stroke"/>'+
+      '<text class="lbl" x="80" y="-32" text-anchor="middle">40</text>'+
+      '<text class="lbl" x="-34" y="82" text-anchor="middle" transform="rotate(-90 -34 82)">40</text>'+
+      '<text class="lbl" x="80" y="226" text-anchor="middle">'+label.replace(/[<&]/g,'')+' · PH-40×40</text>'+
+    '</g></svg>';
+  document.body.appendChild(wrap);
+  sec.classList.add('die-sec');
+  var plate=wrap.querySelector('.plate'),mbg=wrap.querySelector('.m-bg'),gs=wrap.querySelectorAll('.zg'),ticking=false;
+  function frame(){
+    ticking=false;
+    var vh=innerHeight,vw=innerWidth,r=sec.getBoundingClientRect();
+    var p=(vh-r.top)/vh;                       // 0: section top at screen bottom, 1: at screen top
+    if(p<=0.02||p>=1){wrap.classList.remove('on');return;}
+    wrap.classList.add('on');
+    var top=Math.max(r.top,0),h=vh-top;
+    [plate,mbg].forEach(function(el){el.setAttribute('x',0);el.setAttribute('y',top);el.setAttribute('width',vw);el.setAttribute('height',h+40);});
+    var s0=Math.min(vw,vh)*0.34/160, s1=Math.hypot(vw,vh)*1.15/100;   // 1.15: profile core (100 units) must clear the screen diagonal
+    var q=Math.max(0,Math.min(1,(p-0.3)/0.58));                       // plate rises first, then the zoom (done by p=0.88)
+    q=q*q*(3-2*q);
+    var s=s0*Math.pow(s1/s0,q);
+    var cx=vw/2,cy=top+h/2+(1-q)*0;
+    if(q>0)cy=(top+h/2)*(1-q)+(vh/2)*q;
+    var tf='translate('+cx.toFixed(1)+' '+cy.toFixed(1)+') scale('+s.toFixed(4)+') translate(-80 -80)';
+    for(var i=0;i<gs.length;i++)gs[i].setAttribute('transform',tf);
+    var f=Math.max(0,Math.min(1,(q-0.62)/0.38));wrap.style.opacity=(1-f*f).toFixed(3);   // dissolve while passing through
+  }
+  function req(){if(!ticking){ticking=true;requestAnimationFrame(frame);}}
+  addEventListener('scroll',req,{passive:true});addEventListener('resize',req);frame();
 })();
